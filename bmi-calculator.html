@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BMI Calculator</title>
+
+  <!-- Google Fonts: Syne (display) + DM Sans (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* =============================================
+       CSS CUSTOM PROPERTIES (Design Tokens)
+       ============================================= */
+    :root {
+      --bg:          #0d0f14;
+      --surface:     #161921;
+      --surface2:    #1e2230;
+      --border:      rgba(255,255,255,0.07);
+      --accent:      #c8f04a;       /* electric lime */
+      --accent-dim:  rgba(200,240,74,0.12);
+      --text:        #eef0f5;
+      --muted:       #6b7280;
+      --underweight: #60a5fa;
+      --normal:      #c8f04a;
+      --overweight:  #fb923c;
+      --obese:       #f87171;
+      --radius:      18px;
+      --transition:  0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* =============================================
+       RESET & BASE
+       ============================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      /* Subtle noise-grain background texture */
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(200,240,74,0.08) 0%, transparent 70%);
+    }
+
+    /* =============================================
+       CARD
+       ============================================= */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 2.8rem 2.4rem 2.4rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 32px 64px rgba(0,0,0,0.5);
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* =============================================
+       HEADER
+       ============================================= */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      margin-bottom: 2.2rem;
+    }
+
+    /* Accent dot / icon */
+    .header-icon {
+      width: 44px; height: 44px;
+      background: var(--accent);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .header-icon svg { width: 22px; height: 22px; }
+
+    .title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.65rem;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 300;
+      margin-top: 2px;
+    }
+
+    /* =============================================
+       INPUT GROUPS
+       ============================================= */
+    .inputs { display: flex; flex-direction: column; gap: 1.1rem; }
+
+    .field { display: flex; flex-direction: column; gap: 0.45rem; }
+
+    .field label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Wrapper to hold input + unit badge */
+    .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 3.4rem 0.85rem 1.1rem;
+      font-size: 1rem;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      /* Remove browser number spinners */
+      -moz-appearance: textfield;
+    }
+    .input-wrap input::-webkit-inner-spin-button,
+    .input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* Focus state */
+    .input-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(200,240,74,0.15);
+    }
+
+    /* Unit badge (cm / kg) */
+    .unit {
+      position: absolute;
+      right: 1rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* =============================================
+       BUTTONS
+       ============================================= */
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.6rem;
+    }
+
+    /* Primary – Calculate */
+    .btn-primary {
+      flex: 1;
+      padding: 0.9rem 1.2rem;
+      background: var(--accent);
+      color: #0d0f14;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(200,240,74,0.35);
+    }
+
+    .btn-primary:active { transform: translateY(0); }
+
+    /* Secondary – Reset */
+    .btn-secondary {
+      padding: 0.9rem 1.2rem;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 400;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color var(--transition), color var(--transition);
+    }
+
+    .btn-secondary:hover {
+      border-color: rgba(255,255,255,0.2);
+      color: var(--text);
+    }
+
+    /* =============================================
+       RESULT BOX
+       ============================================= */
+    .result-box {
+      margin-top: 1.6rem;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      display: none;           /* hidden until calculated */
+      animation: fadeUp 0.4s ease both;
+    }
+
+    /* Visible state */
+    .result-box.show { display: block; }
+
+    /* Coloured top accent bar */
+    .result-box::before {
+      content: '';
+      display: block;
+      height: 3px;
+      border-radius: 2px;
+      background: var(--result-color, var(--accent));
+      margin-bottom: 1.1rem;
+      transition: background 0.4s ease;
+    }
+
+    .result-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+
+    .result-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--result-color, var(--accent));
+      transition: color 0.4s ease;
+      margin-bottom: 0.55rem;
+    }
+
+    .result-category {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .result-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+      line-height: 1.5;
+    }
+
+    /* =============================================
+       BMI SCALE BAR
+       ============================================= */
+    .scale-wrap {
+      margin-top: 1.1rem;
+    }
+
+    .scale-bar {
+      position: relative;
+      height: 6px;
+      border-radius: 99px;
+      background: linear-gradient(
+        to right,
+        var(--underweight) 0%,
+        var(--underweight) 25%,
+        var(--normal) 25%,
+        var(--normal) 55%,
+        var(--overweight) 55%,
+        var(--overweight) 75%,
+        var(--obese) 75%,
+        var(--obese) 100%
+      );
+      overflow: visible;
+    }
+
+    /* Marker dot on the scale */
+    .scale-marker {
+      position: absolute;
+      top: 50%;
+      width: 14px; height: 14px;
+      background: white;
+      border: 2.5px solid var(--result-color, var(--accent));
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: left 0.5s cubic-bezier(0.4,0,0.2,1), border-color 0.4s ease;
+      box-shadow: 0 0 8px rgba(0,0,0,0.5);
+    }
+
+    .scale-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+
+    .scale-labels span {
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    /* =============================================
+       ERROR STATE
+       ============================================= */
+    .error-msg {
+      margin-top: 0.9rem;
+      font-size: 0.82rem;
+      color: var(--obese);
+      display: none;
+      animation: shake 0.3s ease;
+    }
+
+    .error-msg.show { display: block; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25%      { transform: translateX(-6px); }
+      75%      { transform: translateX(6px); }
+    }
+
+    /* =============================================
+       RESPONSIVE
+       ============================================= */
+    @media (max-width: 480px) {
+      .card { padding: 2rem 1.4rem 1.8rem; }
+      .title { font-size: 1.35rem; }
+      .result-value { font-size: 2.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =============================================
+       CARD
+       ============================================= -->
+  <div class="card">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-icon">
+        <!-- Simple body/scale SVG icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f14" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="5" r="2"/>
+          <path d="M12 7v5m0 0l-3 5m3-5l3 5"/>
+          <path d="M3 19h18"/>
+        </svg>
+      </div>
+      <div>
+        <div class="title">BMI Calculator</div>
+        <div class="subtitle">Body Mass Index · kg &amp; cm</div>
+      </div>
+    </div>
+
+    <!-- Input fields -->
+    <div class="inputs">
+
+      <!-- Height field -->
+      <div class="field">
+        <label for="height">Height</label>
+        <div class="input-wrap">
+          <input type="number" id="height" placeholder="e.g. 175" min="50" max="300" aria-label="Height in centimetres"/>
+          <span class="unit">cm</span>
+        </div>
+      </div>
+
+      <!-- Weight field -->
+      <div class="field">
+        <label for="weight">Weight</label>
+        <div class="input-wrap">
+          <input type="number" id="weight" placeholder="e.g. 70" min="1" max="500" aria-label="Weight in kilograms"/>
+          <span class="unit">kg</span>
+        </div>
+      </div>
+
+    </div><!-- /.inputs -->
+
+    <!-- Error message (shown on invalid input) -->
+    <div class="error-msg" id="errorMsg">⚠ Please enter valid height (50–300 cm) and weight (1–500 kg).</div>
+
+    <!-- Action buttons -->
+    <div class="btn-row">
+      <button class="btn-primary"   id="calcBtn"  onclick="calculateBMI()">Calculate BMI</button>
+      <button class="btn-secondary" id="resetBtn" onclick="resetForm()">Reset</button>
+    </div>
+
+    <!-- Result box (hidden until calculation) -->
+    <div class="result-box" id="resultBox">
+      <div class="result-label">Your BMI</div>
+      <div class="result-value"   id="bmiValue">—</div>
+      <div class="result-category" id="bmiCategory">—</div>
+      <div class="result-desc"     id="bmiDesc"></div>
+
+      <!-- Visual scale bar -->
+      <div class="scale-wrap">
+        <div class="scale-bar">
+          <div class="scale-marker" id="scaleMarker"></div>
+        </div>
+        <div class="scale-labels">
+          <span>Under&shy;weight</span>
+          <span>Normal</span>
+          <span>Over&shy;weight</span>
+          <span>Obese</span>
+        </div>
+      </div>
+
+    </div><!-- /#resultBox -->
+
+  </div><!-- /.card -->
+
+
+  <!-- =============================================
+       JAVASCRIPT
+       ============================================= -->
+  <script>
+
+    /* --------------------------------------------------
+       BMI CATEGORY DEFINITIONS
+       Each entry: [maxBMI, label, colour, description]
+    -------------------------------------------------- */
+    const CATEGORIES = [
+      {
+        max:   18.5,
+        label: 'Underweight',
+        color: 'var(--underweight)',
+        desc:  'Your BMI is below the healthy range. Consider consulting a nutritionist.',
+      },
+      {
+        max:   24.9,
+        label: 'Normal weight',
+        color: 'var(--normal)',
+        desc:  'Great! Your BMI is within the healthy range. Keep up the good lifestyle.',
+      },
+      {
+        max:   29.9,
+        label: 'Overweight',
+        color: 'var(--overweight)',
+        desc:  'Your BMI is slightly above normal. Regular exercise and a balanced diet can help.',
+      },
+      {
+        max:   Infinity,
+        label: 'Obese',
+        color: 'var(--obese)',
+        desc:  'Your BMI is in the obese range. Please speak with a healthcare professional.',
+      },
+    ];
+
+    /* --------------------------------------------------
+       calculateBMI()
+       Reads inputs, validates, computes BMI, renders UI.
+    -------------------------------------------------- */
+    function calculateBMI() {
+      const heightCm = parseFloat(document.getElementById('height').value);
+      const weightKg = parseFloat(document.getElementById('weight').value);
+      const errorEl  = document.getElementById('errorMsg');
+      const resultEl = document.getElementById('resultBox');
+
+      /* --- Validation --- */
+      const valid =
+        !isNaN(heightCm) && heightCm >= 50 && heightCm <= 300 &&
+        !isNaN(weightKg) && weightKg >= 1  && weightKg <= 500;
+
+      if (!valid) {
+        errorEl.classList.add('show');
+        resultEl.classList.remove('show');
+        return;
+      }
+
+      errorEl.classList.remove('show');
+
+      /* --- BMI Formula: weight(kg) / height(m)^2 --- */
+      const heightM = heightCm / 100;
+      const bmi     = weightKg / (heightM * heightM);
+      const bmiRounded = Math.round(bmi * 10) / 10;   // one decimal place
+
+      /* --- Determine category --- */
+      const cat = CATEGORIES.find(c => bmi < c.max);
+
+      /* --- Update result text --- */
+      document.getElementById('bmiValue').textContent    = bmiRounded.toFixed(1);
+      document.getElementById('bmiCategory').textContent = cat.label;
+      document.getElementById('bmiDesc').textContent     = cat.desc;
+
+      /* --- Apply accent colour via CSS variable --- */
+      resultEl.style.setProperty('--result-color', cat.color);
+
+      /* --- Position the scale marker ---
+           We map BMI onto a 0–100% position.
+           Scale: 10 → 0%  …  40 → 100%  (clamped) */
+      const pct = Math.min(100, Math.max(0, ((bmi - 10) / 30) * 100));
+      document.getElementById('scaleMarker').style.left = pct + '%';
+
+      /* --- Show result box --- */
+      resultEl.classList.remove('show');        // remove first to re-trigger animation
+      void resultEl.offsetWidth;               // force reflow
+      resultEl.classList.add('show');
+    }
+
+    /* --------------------------------------------------
+       resetForm()
+       Clears all inputs and hides results.
+    -------------------------------------------------- */
+    function resetForm() {
+      document.getElementById('height').value = '';
+      document.getElementById('weight').value = '';
+      document.getElementById('errorMsg').classList.remove('show');
+      document.getElementById('resultBox').classList.remove('show');
+      /* Return focus to first field */
+      document.getElementById('height').focus();
+    }
+
+    /* --------------------------------------------------
+       Keyboard support: press Enter in either field
+       to trigger calculation.
+    -------------------------------------------------- */
+    document.getElementById('height').addEventListener('keydown', e => { if (e.key === 'Enter') calculateBMI(); });
+    document.getElementById('weight').addEventListener('keydown', e => { if (e.key === 'Enter') calculateBMI(); });
+
+  </script>
+</body>
+</html>
